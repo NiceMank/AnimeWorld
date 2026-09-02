@@ -1,0 +1,91 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.2"
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build APKs (release, split per ABI + universal)
+        run: |
+          flutter build apk --release --split-per-abi
+          flutter build apk --release
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   dist/AnimeWorld-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/AnimeWorld-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk      dist/AnimeWorld-x86_64.apk
+          cp build/app/outputs/flutter-apk/app-release.apk             dist/AnimeWorld-universal.apk
+          (cd dist && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnimeWorld-apk
+          path: dist/*
+          retention-days: 30
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AnimeWorld ${{ github.ref_name }}
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            ## AnimeWorld ${{ github.ref_name }}
+
+            Client mobile Flutter reproduisant les fonctionnalités d'anime-sama
+            (animes VOSTFR/VF, films, OAV, scans, planning, bibliothèque, synchro compte).
+
+            ### Installation Android
+            1. Téléchargez **AnimeWorld-arm64-v8a.apk** (téléphones récents).
+               Si l'installation échoue, utilisez **AnimeWorld-universal.apk**.
+            2. Autorisez l'installation depuis des sources inconnues.
+            3. Ouvrez l'application.
+
+            | Fichier | Appareils |
+            |---|---|
+            | `AnimeWorld-arm64-v8a.apk` | la plupart des téléphones (64 bits) — **recommandé** |
+            | `AnimeWorld-armeabi-v7a.apk` | anciens téléphones 32 bits |
+            | `AnimeWorld-x86_64.apk` | émulateurs / tablettes x86 |
+            | `AnimeWorld-universal.apk` | toutes architectures (plus lourd) |
+
+            Sommes de contrôle : `SHA256SUMS.txt`.
