@@ -43,27 +43,29 @@ jobs:
         run: |
           flutter analyze --no-fatal-infos > analyze.log 2>&1 || CODE=$?
           cat analyze.log
+          grep -E "(error|warning) •" analyze.log | cut -c1-400 | sed 's/^/::error::/' || true
           {
             echo "### flutter analyze"
             echo '```'
             cat analyze.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          exit $((CODE ?? 0))
+          exit ${CODE:-0}
 
       # Tests unitaires hors ligne (fixtures embarquées) : parseurs, logique
       # de diff des notifications, modèles. Toujours bloquants.
       - name: Tests unitaires
         run: |
           flutter test --reporter expanded > test.log 2>&1 || CODE=$?
-          tail -80 test.log
+          tail -80 test.log || true
+          grep -E "\[E\]|Expected:|Actual:|Some tests failed" test.log | cut -c1-400 | sed 's/^/::error::/' || true
           {
             echo "### flutter test"
             echo '```'
             tail -60 test.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          exit $((CODE ?? 0))
+          exit ${CODE:-0}
 
       # Tests d'intégration contre le site réel : détectent les changements
       # de structure du site qui casseraient l'application (non bloquants :
