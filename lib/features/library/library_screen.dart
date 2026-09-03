@@ -7,6 +7,7 @@ import '../../core/router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/local_store.dart';
 import '../../data/models/models.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../shared/widgets/common.dart';
 
 /// Bibliothèque — équivalent de la section « pf-library » de /profil :
@@ -76,6 +77,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       appBar: AppBar(
         title: const Text('BIBLIOTHÈQUE'),
         actions: [
+          const NotificationBellButton(),
           IconButton(
             tooltip: 'Vider la liste',
             icon: const Icon(Icons.delete_sweep_outlined),

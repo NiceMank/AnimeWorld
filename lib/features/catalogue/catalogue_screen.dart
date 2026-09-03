@@ -6,6 +6,7 @@ import '../../core/constants/genres.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/models.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../shared/widgets/common.dart';
 
 /// Catalogue — mêmes filtres que le formulaire GET /catalogue du site.
@@ -96,6 +97,7 @@ class _CatalogueScreenState extends ConsumerState<CatalogueScreen> {
       appBar: AppBar(
         title: const Text('CATALOGUE'),
         actions: [
+          const NotificationBellButton(),
           Stack(children: [
             IconButton(
               tooltip: 'Filtres',

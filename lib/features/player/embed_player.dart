@@ -22,12 +22,21 @@ class EmbedPlayer extends StatefulWidget {
     required this.onToggleFullscreen,
     required this.isFullscreen,
     this.onOpenExternal,
+    this.onNextPlayer,
+    this.referer,
   });
 
   final String url;
   final VoidCallback onToggleFullscreen;
   final bool isFullscreen;
   final VoidCallback? onOpenExternal;
+
+  /// Passe au lecteur suivant disponible (bouton de l'état d'erreur).
+  final VoidCallback? onNextPlayer;
+
+  /// URL de référent envoyée au chargement : le domaine du site COURANT
+  /// (certains hébergeurs la vérifient pour autoriser la lecture).
+  final String? referer;
 
   @override
   State<EmbedPlayer> createState() => _EmbedPlayerState();
@@ -117,6 +126,11 @@ class _EmbedPlayerState extends State<EmbedPlayer> {
         iframeAllowFullscreen: true,
         allowsPictureInPictureMediaPlayback: true,
         useHybridComposition: true,
+        // Android : vidéos HTTP servies par des embeds HTTPS (sinon écran
+        // noir) + cookies tiers requis par plusieurs hébergeurs.
+        mixedContentMode: MixedContentMode.MIXED_CONTENT_COMPATIBILITY_MODE,
+        thirdPartyCookiesEnabled: true,
+        domStorageEnabled: true,
         // Une règle par mot-clé : la syntaxe des content blockers WebKit ne
         // garantit pas l'alternation « | ».
         contentBlockers: [
@@ -143,12 +157,23 @@ class _EmbedPlayerState extends State<EmbedPlayer> {
       child: InAppWebView(
         initialUrlRequest: URLRequest(
           url: WebUri(widget.url),
-          headers: {'Referer': '${AppConstants.defaultBaseUrl}/'},
+          headers: {
+            'Referer': widget.referer ?? '${AppConstants.defaultBaseUrl}/',
+          },
         ),
         initialSettings: _settings,
         onWebViewCreated: (c) => _ctrl = c,
         onProgressChanged: (_, p) {
           if (mounted) setState(() => _progress = p / 100);
+        },
+        onLoadStop: (_, url) {
+          // Le lecteur peut rediriger son propre domaine (uqload.is →
+          // .vc…) : on suit pour que les règles de navigation restent
+          // justes.
+          final host = url?.host ?? '';
+          if (host.isNotEmpty && host != _currentHost && mounted) {
+            setState(() => _currentHost = host);
+          }
         },
         onReceivedError: (_, req, err) {
           if (req.isForMainFrame == true && mounted) setState(() => _error = true);
@@ -213,8 +238,12 @@ class _EmbedPlayerState extends State<EmbedPlayer> {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.error_outline_rounded, size: 36, color: AppColors.danger),
               const SizedBox(height: 8),
-              const Text('Vidéo indisponible — essayez un autre lecteur.',
-                  textAlign: TextAlign.center),
+              Text(
+                'Vidéo indisponible sur ce lecteur '
+                '${_currentHost.isEmpty ? '' : '($_currentHost)'}.\n'
+                'Essayez un autre lecteur.',
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 6, alignment: WrapAlignment.center, children: [
                 OutlinedButton(
@@ -224,6 +253,15 @@ class _EmbedPlayerState extends State<EmbedPlayer> {
                   },
                   child: const Text('Recharger'),
                 ),
+                if (widget.onNextPlayer != null)
+                  FilledButton.icon(
+                    onPressed: () {
+                      setState(() => _error = false);
+                      widget.onNextPlayer!();
+                    },
+                    icon: const Icon(Icons.skip_next_rounded, size: 18),
+                    label: const Text('Lecteur suivant'),
+                  ),
                 if (widget.onOpenExternal != null)
                   OutlinedButton(
                     onPressed: widget.onOpenExternal,
