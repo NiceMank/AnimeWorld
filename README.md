@@ -51,7 +51,7 @@ lib/
 │  └─ repositories/               # anime_repository, account_repository
 ├─ features/                      # un dossier par écran
 └─ shared/widgets/common.dart     # cartes, images, états, pilules
-test/parsers_live_test.dart       # 40 tests contre les vraies pages du site
+tool/parsers_live_check.dart     # tests live contre les vraies pages du site
 design/                           # visuels de référence (logo + écrans)
 docs/ANALYSE_ANIME_SAMA.md        # analyse complète du site
 ```
