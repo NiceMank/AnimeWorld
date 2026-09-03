@@ -26,7 +26,8 @@ var eps3 = ["https://vidmoly.to/e1.html"];
       expect(players[0].urls, hasLength(3));
       expect(players[0].host, 'uqload.is');
       expect(players[1].urls, hasLength(2));
-      expect(players[2].urls.first, 'https://vidmoly.to/e1.html');
+      // videos.js réécrit vidmoly.to/.net → vidmoly.biz.
+      expect(players[2].urls.first, 'https://vidmoly.biz/e1.html');
     });
 
     test('ignore les blocs commentés et réécrit vidmoly comme le site', () {
@@ -85,13 +86,14 @@ finirListe(11);
         scripts: ['''
 function finirListeOP(debut){ return 1080 + (tailleEpisodes - epRetards); }
 resetListe();
-newSP("Episode 1089");
-newSP("Episode 1090");
+newSP("1089");
+newSP("1090");
 finirListeOP(1091);
 '''],
         unit: 'Episode',
       );
-      // 2 spéciaux + finirListeOP(1091) complète jusqu'à 1080 + (13 - 2) = 1091.
+      // newSP préfixe l'unité (« Episode 1089 ») ; finirListeOP(1091) complète
+      // jusqu'à 1080 + (13 - 2) = 1091.
       expect(labels, hasLength(3));
       expect(labels[0], 'Episode 1089');
       expect(labels[1], 'Episode 1090');
