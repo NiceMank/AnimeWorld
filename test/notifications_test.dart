@@ -142,6 +142,7 @@ void main() {
             path: '/catalogue/x/saison1/vostfr/',
             slug: 'x',
             title: 'X',
+            image: 'https://cdn.example.com/x.jpg',
             info: 'Saison 1 Episode 2',
             releaseTs: 1788000000,
           ),

@@ -384,8 +384,8 @@ class NotificationsNotifier extends Notifier<NotificationsState> {
       );
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-      await android?.createChannel(_channelEpisodes);
-      await android?.createChannel(_channelScans);
+      await android?.createNotificationChannel(_channelEpisodes);
+      await android?.createNotificationChannel(_channelScans);
       _pluginReady = true;
     } catch (_) {
       // Plateforme non supportée (tests) : le centre in-app reste fonctionnel.
