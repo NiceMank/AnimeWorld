@@ -56,13 +56,12 @@ jobs:
       # de diff des notifications, modèles. Toujours bloquants.
       - name: Tests unitaires
         run: |
-          flutter test --reporter expanded > test.log 2>&1 || CODE=$?
-          tail -80 test.log || true
-          grep -E "\[E\]|Expected:|Actual:|Some tests failed" test.log | cut -c1-400 | sed 's/^/::error::/' || true
+          flutter test --reporter github > test.log 2>&1 || CODE=$?
+          tail -40 test.log || true
           {
             echo "### flutter test"
             echo '```'
-            tail -60 test.log
+            tail -30 test.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           exit ${CODE:-0}
@@ -72,7 +71,7 @@ jobs:
       # le site peut être temporairement indisponible).
       - name: Tests parseurs (site réel)
         continue-on-error: true
-        run: dart test/parsers_live_test.dart
+        run: dart tool/parsers_live_check.dart
 
       # Diagnostic du lecteur vidéo : page épisode → episodes.js → lecteurs
       # extraits → accessibilité des hébergeurs. Toujours affiché en résumé.

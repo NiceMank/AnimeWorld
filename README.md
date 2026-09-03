@@ -85,7 +85,7 @@ Les icônes ont déjà été générées (`flutter pub run flutter_launcher_icon
 ### Tests des parseurs (contre le site en ligne)
 
 ```bash
-dart test/parsers_live_test.dart      # intégration : vraies pages du site
+dart tool/parsers_live_check.dart    # intégration : vraies pages du site
 flutter test                          # tests unitaires hors ligne (CI)
 dart run tool/diagnose_player.dart    # diagnostic du lecteur vidéo
 ```
