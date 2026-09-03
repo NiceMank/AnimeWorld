@@ -484,3 +484,70 @@ class ServerData {
     this.history = const [],
   });
 }
+
+// ---------------------------------------------------------------------------
+// Notifications temps réel
+// ---------------------------------------------------------------------------
+
+/// Notification applicative créée par la veille des sorties
+/// (nouvel épisode / chapitre des œuvres suivies).
+class AppNotification {
+  /// Identifiant stable : `{chemin}::{libellé}` (déduplique les vérifications).
+  final String id;
+  final String title; // nom de l'œuvre
+  final String body; // « Episode 9 (VOSTFR) est disponible »
+  final String path; // chemin du site à ouvrir (/catalogue/{slug}/…)
+  final String image; // vignette
+  final String kind; // episode | scan
+  final String lang; // VOSTFR, VF, VKR…
+  final DateTime at; // date de publication/détection
+  final bool read;
+
+  const AppNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.path,
+    required this.image,
+    required this.kind,
+    required this.lang,
+    required this.at,
+    this.read = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'path': path,
+        'image': image,
+        'kind': kind,
+        'lang': lang,
+        'at': at.toIso8601String(),
+        'read': read,
+      };
+
+  factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
+        id: '${j['id'] ?? ''}',
+        title: '${j['title'] ?? ''}',
+        body: '${j['body'] ?? ''}',
+        path: '${j['path'] ?? ''}',
+        image: '${j['image'] ?? ''}',
+        kind: '${j['kind'] ?? 'episode'}',
+        lang: '${j['lang'] ?? ''}',
+        at: DateTime.tryParse('${j['at']}') ?? DateTime.now(),
+        read: j['read'] == true,
+      );
+
+  AppNotification copyWith({bool? read}) => AppNotification(
+        id: id,
+        title: title,
+        body: body,
+        path: path,
+        image: image,
+        kind: kind,
+        lang: lang,
+        at: at,
+        read: read ?? this.read,
+      );
+}

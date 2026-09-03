@@ -24,6 +24,7 @@ API JSON des scans et endpoints `/api/*` du compte).
 | **Lecteur scans** | `get_nb_chap_et_img.php` + `/s2/scans/…/{n}.jpg` | Chapitres (numérotation custom), mode Scroll / Page par page (dossier « pp »), fond bleu nuit/blanc/noir, plein écran, zoom, préchargement, VF/VA, progression + historique |
 | **Planning** | `GET /planning` | 7 jours (jour courant sélectionné), horloge, filtres Tous/Animes/Scans/VO/VF + recherche, retards, « Œuvres en cours sans jours fixes » |
 | **Bibliothèque** | local + `/api/*` | Historique / Watchlist / Favoris / Vus avec compteurs, recherche, tri, filtres type & langue, suppression, vider |
+| **Notifications** | `GET /` (polling temps réel) | Veille des sorties : nouveaux épisodes/chapitres des œuvres suivies (watchlist, favoris, historique) ou de tout le site. Centre de notifications avec badge temps réel, bannière in-app, notifications système (Android 13+ / iOS), fréquence configurable (2 min → 1 h), canaux épisodes/scans |
 | **Profil** | `/api/auth/*`, `/api/get-data.php`, `/api/sync-*.php`, `/api/merge-data.php` | Connexion / inscription (mêmes règles), synchronisation bidirectionnelle, statistiques, paramètres (lecteur par défaut, langue, mode de lecture, fond, **domaine du site**, cache) |
 | **Aide** | `/aide` | FAQ des problèmes récurrents, confidentialité, DMCA |
 
@@ -50,7 +51,7 @@ lib/
 │  └─ repositories/               # anime_repository, account_repository
 ├─ features/                      # un dossier par écran
 └─ shared/widgets/common.dart     # cartes, images, états, pilules
-test/parsers_live_test.dart       # 40 tests contre les vraies pages du site
+tool/parsers_live_check.dart     # tests live contre les vraies pages du site
 design/                           # visuels de référence (logo + écrans)
 docs/ANALYSE_ANIME_SAMA.md        # analyse complète du site
 ```
@@ -63,7 +64,7 @@ Les APK sont construits automatiquement par GitHub Actions à chaque tag `v*` :
 
 ## Compiler l'application
 
-Prérequis : Flutter ≥ 3.35 (testé avec 3.47.2 / Dart 3.13), Android SDK (API 24+) et/ou Xcode.
+Prérequis : Flutter ≥ 3.38 (testé avec 3.47.2 / Dart 3.13), Android SDK (API 24+) et/ou Xcode.
 
 ```bash
 cd AnimeWorld
@@ -84,17 +85,34 @@ Les icônes ont déjà été générées (`flutter pub run flutter_launcher_icon
 ### Tests des parseurs (contre le site en ligne)
 
 ```bash
-dart test/parsers_live_test.dart
+dart tool/parsers_live_check.dart    # intégration : vraies pages du site
+flutter test                          # tests unitaires hors ligne (CI)
+dart run tool/diagnose_player.dart    # diagnostic du lecteur vidéo
 ```
+
+Le workflow GitHub Actions (`Build & Release`) exécute à chaque push/PR :
+
+1. `flutter analyze` (bloquant) ;
+2. `flutter test` — tests unitaires hors ligne (bloquant) ;
+3. les tests des parseurs contre le site réel (non bloquant : le site peut
+   être indisponible) ;
+4. le diagnostic du lecteur vidéo (page épisode → episodes.js → lecteurs
+   extraits → accessibilité des hébergeurs).
 
 ## Notes
 
 * **Domaine** : le site change parfois de domaine (`.to` / `.org` / `.fr`). Modifiable dans
   *Profil › Domaine du site* sans mise à jour de l'application.
 * **Lecteurs vidéo** : les vidéos sont hébergées par des tiers (embed4me, ansembed, sibnet,
-  uqload, vidmoly, sendvid…). Certains sont bloqués par des opérateurs ; changez de lecteur.
+  uqload, vidmoly, sendvid…). Certains sont bloqués par des opérateurs ; la WebView autorise
+  désormais le contenu mixte (vidéos HTTP dans les embeds HTTPS) et les cookies tiers, et un
+  bouton **Lecteur suivant** permet d'enchaîner quand un hébergeur est mort.
   Certains hébergeurs (ex. sibnet) filtrent les requêtes hors navigateur : la WebView intégrée
   se comporte comme Chrome mobile.
+* **Notifications** : « temps réel » = interrogation du site à intervalle régulier
+  (2 min → 1 h, configurable) pendant que l'app est ouverte, + vérification au retour au
+  premier plan. Le site ne propose pas de serveur de push ; la première vérification établit
+  une baseline silencieuse (pas de rafale de notifications à l'installation).
 * **Pubs** : la WebView bloque `window.open`, les navigations vers des domaines externes et une
   liste de régies publicitaires ; un compteur indique le nombre de pubs bloquées.
 * L'application n'héberge aucun contenu et n'est pas affiliée au site.

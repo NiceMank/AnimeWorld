@@ -10,6 +10,7 @@ import '../../core/constants/languages.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/local_store.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../shared/widgets/common.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -93,7 +94,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: const Text('PROFIL')),
+      appBar: AppBar(
+        title: const Text('PROFIL'),
+        actions: const [NotificationBellButton()],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
         children: [
@@ -206,7 +210,92 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _Stat('Vus', seen, () => context.go('/library?tab=3')),
           ]),
 
+          const SectionTitle('Notifications', padding: EdgeInsets.fromLTRB(0, 20, 0, 4)),
+          _SwitchTile(
+            icon: Icons.notifications_active_outlined,
+            title: 'Notifications temps réel',
+            subtitle: 'Alerte à la sortie d\'un nouvel épisode ou chapitre',
+            value: store.notificationsEnabled,
+            onChanged: (v) =>
+                ref.read(notificationsProvider.notifier).toggleEnabled(v),
+          ),
+          if (store.notificationsEnabled) ...[
+            _SwitchTile(
+              icon: Icons.phone_android_rounded,
+              title: 'Notifications système',
+              subtitle: 'Bandeau même quand l\'app est en arrière-plan',
+              value: store.systemNotificationsEnabled,
+              onChanged: (v) async {
+                final notifier = ref.read(notificationsProvider.notifier);
+                if (v) await notifier.requestSystemPermission();
+                await ref
+                    .read(localStoreProvider)
+                    .setSystemNotificationsEnabled(v);
+              },
+            ),
+            _Tile(
+              icon: Icons.schedule_rounded,
+              title: 'Fréquence de vérification',
+              value: _intervalLabel(store.notificationsIntervalMinutes),
+              onTap: () => _pick(
+                'Fréquence de vérification',
+                const {
+                  '2': 'Toutes les 2 minutes',
+                  '5': 'Toutes les 5 minutes',
+                  '15': 'Toutes les 15 minutes',
+                  '30': 'Toutes les 30 minutes',
+                  '60': 'Toutes les heures',
+                },
+                '${store.notificationsIntervalMinutes}',
+                (v) async {
+                  await ref
+                      .read(localStoreProvider)
+                      .setNotificationsIntervalMinutes(int.parse(v));
+                  // ignore: unawaited_futures
+                  ref.read(notificationsProvider.notifier).restart();
+                },
+              ),
+            ),
+            _SwitchTile(
+              icon: Icons.play_circle_outline_rounded,
+              title: 'Nouveaux épisodes',
+              value: store.notifyEpisodes,
+              onChanged: (v) => ref
+                  .read(localStoreProvider)
+                  .setNotifyEpisodes(v),
+            ),
+            _SwitchTile(
+              icon: Icons.menu_book_rounded,
+              title: 'Nouveaux chapitres (scans)',
+              value: store.notifyScans,
+              onChanged: (v) => ref.read(localStoreProvider).setNotifyScans(v),
+            ),
+            _Tile(
+              icon: Icons.track_changes_rounded,
+              title: 'Œuvres suivies',
+              value: store.notificationsScope == 'all'
+                  ? 'Toutes les sorties'
+                  : 'Ma bibliothèque',
+              onTap: () => _pick(
+                'Œuvres à surveiller',
+                const {
+                  'library': 'Ma bibliothèque (watchlist, favoris, historique)',
+                  'all': 'Toutes les sorties du site',
+                },
+                store.notificationsScope,
+                ref.read(localStoreProvider).setNotificationsScope,
+              ),
+            ),
+            _Tile(
+              icon: Icons.history_rounded,
+              title: 'Dernière vérification',
+              value: NotificationsScreen.lastCheckShort(store.lastNotifCheck),
+              onTap: () => context.push('/notifications'),
+            ),
+          ],
+
           const SectionTitle('Paramètres', padding: EdgeInsets.fromLTRB(0, 20, 0, 4)),
+
           _Tile(
             icon: Icons.dvr_rounded,
             title: 'Lecteur par défaut',
@@ -413,5 +502,50 @@ class _Tile extends StatelessWidget {
           ]),
       onTap: onTap,
     );
+  }
+}
+
+class _SwitchTile extends StatelessWidget {
+  const _SwitchTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onChanged,
+    this.subtitle,
+  });
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      leading: Icon(icon, color: AppColors.accent),
+      title: Text(title,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      subtitle: subtitle == null
+          ? null
+          : Text(subtitle!,
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textDim)),
+      trailing: Switch(value: value, onChanged: onChanged),
+      onTap: () => onChanged(!value),
+    );
+  }
+}
+
+String _intervalLabel(int minutes) {
+  switch (minutes) {
+    case 2:
+      return '2 min';
+    case 15:
+      return '15 min';
+    case 30:
+      return '30 min';
+    case 60:
+      return '1 h';
+    default:
+      return '5 min';
   }
 }

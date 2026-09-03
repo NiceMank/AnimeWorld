@@ -258,7 +258,22 @@ class _EpisodeScreenState extends ConsumerState<EpisodeScreen> {
       isFullscreen: fullscreen,
       onOpenExternal: () =>
           launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      onNextPlayer: () => _nextPlayer(page),
+      // Le référent doit correspondre au domaine réellement utilisé
+      // (certains hébergeurs le vérifient, sinon la vidéo est refusée).
+      referer: '${ref.read(apiClientProvider).baseUrl}/',
     );
+  }
+
+  /// Passe au lecteur suivant qui possède l'épisode courant (boucle).
+  void _nextPlayer(EpisodePage page) {
+    for (var step = 1; step <= page.players.length; step++) {
+      final i = (_player + step) % page.players.length;
+      if (page.urlFor(i, _episode) != null) {
+        _select(page, player: i);
+        return;
+      }
+    }
   }
 
   Widget _buildFullscreen(EpisodePage page) {

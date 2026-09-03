@@ -316,6 +316,166 @@ class LocalStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------------------------------------------------------------------------
+  // Notifications temps réel (veille des sorties)
+  // ---------------------------------------------------------------------------
+
+  static const _notifKey = 'notifications';
+  static const _notifSigsKey = 'releaseSignatures';
+  static const _notifMax = 150;
+
+  List<AppNotification> getNotifications() {
+    final raw = _box.get(_notifKey);
+    if (raw is! List) return const [];
+    return raw
+        .map((e) {
+          try {
+            if (e is Map) return AppNotification.fromJson(Map<String, dynamic>.from(e));
+            if (e is String) {
+              return AppNotification.fromJson(
+                Map<String, dynamic>.from(jsonDecode(e) as Map),
+              );
+            }
+          } catch (_) {}
+          return null;
+        })
+        .whereType<AppNotification>()
+        .toList(); // trié du plus récent au plus ancien
+  }
+
+  /// Ajoute en tête, dédoublonne par id et borne la liste.
+  Future<void> addNotifications(List<AppNotification> added) async {
+    if (added.isEmpty) return;
+    final seen = <String>{};
+    final out = <AppNotification>[];
+    for (final n in [...added, ...getNotifications()]) {
+      if (!seen.add(n.id)) continue;
+      out.add(n);
+      if (out.length >= _notifMax) break;
+    }
+    await _box.put(_notifKey, out.map((n) => n.toJson()).toList());
+    notifyListeners();
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    final out = <AppNotification>[];
+    for (final n in getNotifications()) {
+      out.add(n.id == id ? n.copyWith(read: true) : n);
+    }
+    await _box.put(_notifKey, out.map((n) => n.toJson()).toList());
+    notifyListeners();
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _box.put(
+      _notifKey,
+      getNotifications().map((n) => n.copyWith(read: true).toJson()).toList(),
+    );
+    notifyListeners();
+  }
+
+  Future<void> clearNotifications() async {
+    await _box.put(_notifKey, <Map<String, dynamic>>[]);
+    notifyListeners();
+  }
+
+  int get unreadNotificationCount =>
+      getNotifications().where((n) => !n.read).length;
+
+  /// Signatures des sorties déjà vues (`{path}::{info}`) — base du diff
+  /// « temps réel ». Stockées dans la box de données (pas de notification
+  /// pour l'utilisateur).
+  Set<String> get releaseSignatures {
+    final raw = _box.get(_notifSigsKey);
+    if (raw is List) return raw.map((e) => '$e').toSet();
+    return const {};
+  }
+
+  Future<void> setReleaseSignatures(Set<String> sigs) =>
+      _box.put(_notifSigsKey, sigs.toList());
+
+  DateTime? get lastNotifCheck {
+    final v = _prefs.get('lastNotifCheck');
+    return v == null ? null : DateTime.tryParse('$v');
+  }
+
+  Future<void> setLastNotifCheck(DateTime d) async {
+    await _prefs.put('lastNotifCheck', d.toIso8601String());
+    notifyListeners();
+  }
+
+  // Réglages notifications ---------------------------------------------------
+
+  /// Veille active (centre de notifications + polling). Activée par défaut.
+  bool get notificationsEnabled =>
+      _prefs.get('notificationsEnabled', defaultValue: true);
+  Future<void> setNotificationsEnabled(bool v) async {
+    await _prefs.put('notificationsEnabled', v);
+    notifyListeners();
+  }
+
+  /// Notifier aussi via les notifications système (bandeau Android/iOS).
+  bool get systemNotificationsEnabled =>
+      _prefs.get('systemNotifications', defaultValue: true);
+  Future<void> setSystemNotificationsEnabled(bool v) async {
+    await _prefs.put('systemNotifications', v);
+    notifyListeners();
+  }
+
+  /// Période du polling (minutes) — 2, 5, 15, 30 ou 60.
+  int get notificationsIntervalMinutes =>
+      _prefs.get('notifInterval', defaultValue: 5);
+  Future<void> setNotificationsIntervalMinutes(int v) async {
+    await _prefs.put('notifInterval', v);
+    notifyListeners();
+  }
+
+  bool get notifyEpisodes => _prefs.get('notifyEpisodes', defaultValue: true);
+  Future<void> setNotifyEpisodes(bool v) async {
+    await _prefs.put('notifyEpisodes', v);
+    notifyListeners();
+  }
+
+  bool get notifyScans => _prefs.get('notifyScans', defaultValue: true);
+  Future<void> setNotifyScans(bool v) async {
+    await _prefs.put('notifyScans', v);
+    notifyListeners();
+  }
+
+  /// Périmètre : `library` (watchlist + favoris + historique) ou `all`.
+  String get notificationsScope =>
+      _prefs.get('notifScope', defaultValue: 'library');
+  Future<void> setNotificationsScope(String v) async {
+    await _prefs.put('notifScope', v);
+    notifyListeners();
+  }
+
+  /// L'œuvre est-elle suivie (watchlist, favoris, vus ou historique) ?
+  bool isTrackedSlug(String slug) {
+    final s = slug.toLowerCase();
+    bool fromEntry(String url) {
+      final parts = url.split('/').where((p) => p.isNotEmpty).toList();
+      final i = parts.indexOf('catalogue');
+      return i >= 0 &&
+          i + 1 < parts.length &&
+          parts[i + 1].toLowerCase() == s;
+    }
+
+    for (final e in getList(watchPrefix)) {
+      if (fromEntry(e.url)) return true;
+    }
+    for (final e in getList(favPrefix)) {
+      if (fromEntry(e.url)) return true;
+    }
+    for (final e in getList(seenPrefix)) {
+      if (fromEntry(e.url)) return true;
+    }
+    for (final h in getHistory()) {
+      if (fromEntry(h.url)) return true;
+    }
+    return false;
+  }
+
   Future<void> wipeAll() async {
     await _box.clear();
     notifyListeners();

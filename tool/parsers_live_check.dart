@@ -1,7 +1,8 @@
-// Tests d'intégration des parseurs contre les pages HTML réelles du site,
-// sauvegardées dans /home/user/analysis (ou téléchargées à la volée).
+// Tests d'intégration des parseurs contre les pages HTML réelles du site
+// (téléchargées à la volée, réseau requis). Harnais Dart autonome :
+// exécuté en CI hors de `flutter test`.
 //
-// Lancer :  dart test/parsers_live_test.dart
+// Lancer :  dart tool/parsers_live_check.dart
 import 'dart:convert';
 import 'dart:io';
 

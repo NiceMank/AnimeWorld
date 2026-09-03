@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/models.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../shared/widgets/common.dart';
 
 /// Planning hebdomadaire — /planning (7 jours + œuvres sans jour fixe),
@@ -63,6 +64,7 @@ class _PlanningScreenState extends ConsumerState<PlanningScreen>
       appBar: AppBar(
         title: const Text('PLANNING'),
         actions: [
+          const NotificationBellButton(),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10),

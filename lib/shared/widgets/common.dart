@@ -507,11 +507,23 @@ class LangPill extends StatelessWidget {
   }
 }
 
-void showSnack(BuildContext context, String msg, {bool error = false}) {
+void showSnack(
+  BuildContext context,
+  String msg, {
+  bool error = false,
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       content: Text(msg),
       backgroundColor: error ? AppColors.danger : AppColors.surface2,
+      duration: actionLabel != null
+          ? const Duration(seconds: 6)
+          : const Duration(seconds: 3),
+      action: actionLabel != null
+          ? SnackBarAction(label: actionLabel, onPressed: onAction ?? () {})
+          : null,
     ));
 }

@@ -6,7 +6,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'AnimeWorld';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.1.0';
 
   /// Domaine principal. Le site possède plusieurs miroirs (.to / .org / .fr) ;
   /// il est modifiable dans les paramètres si le domaine change.
@@ -21,8 +21,8 @@ class AppConstants {
       'https://raw.githubusercontent.com/Anime-Sama/IMG/img';
 
   static const String userAgent =
-      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36';
+      'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36';
 
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 25);

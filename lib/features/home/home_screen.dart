@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/models.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../shared/widgets/common.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -38,6 +39,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ]),
         actions: [
+          const NotificationBellButton(),
           IconButton(
             tooltip: 'Rechercher',
             onPressed: () => context.push('/search'),

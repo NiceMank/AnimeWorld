@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -14,8 +15,77 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  tests:
+    name: Analyse & Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.2"
+          cache: true
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: |
+          flutter analyze --no-fatal-infos > analyze.log 2>&1 || CODE=$?
+          cat analyze.log
+          grep -E "(error|warning) •" analyze.log | cut -c1-400 | sed 's/^/::error::/' || true
+          {
+            echo "### flutter analyze"
+            echo '```'
+            cat analyze.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit ${CODE:-0}
+
+      # Tests unitaires hors ligne (fixtures embarquées) : parseurs, logique
+      # de diff des notifications, modèles. Toujours bloquants.
+      - name: Tests unitaires
+        run: |
+          flutter test --reporter github > test.log 2>&1 || CODE=$?
+          tail -40 test.log || true
+          {
+            echo "### flutter test"
+            echo '```'
+            tail -30 test.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit ${CODE:-0}
+
+      # Tests d'intégration contre le site réel : détectent les changements
+      # de structure du site qui casseraient l'application (non bloquants :
+      # le site peut être temporairement indisponible).
+      - name: Tests parseurs (site réel)
+        continue-on-error: true
+        run: |
+          dart tool/parsers_live_check.dart 2>&1 | tee live.log || true
+          grep -E "✗|✓|▶" live.log | cut -c1-380 | head -12 | sed 's/^/::notice::/' || true
+
+      # Diagnostic du lecteur vidéo : page épisode → episodes.js → lecteurs
+      # extraits → accessibilité des hébergeurs. Toujours affiché en résumé.
+      - name: Diagnostic lecteur vidéo (site réel)
+        continue-on-error: true
+        run: |
+          dart run tool/diagnose_player.dart 2>&1 | tee diag.log || true
+          grep -E "▶|page  :|parse :|Lecteur|✗|HTTP" diag.log | cut -c1-380 | head -12 | sed 's/^/::notice::/' || true
+
   android:
     name: Android APK
+    needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -43,9 +113,6 @@ jobs:
 
       - name: Patch AGP 9 ProGuard in plugins
         run: bash tool/patch_agp9_plugins.sh
-
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
 
       - name: Build APKs (release, split per ABI + universal)
         run: |
@@ -80,6 +147,15 @@ jobs:
 
             Client mobile Flutter reproduisant les fonctionnalités d'anime-sama
             (animes VOSTFR/VF, films, OAV, scans, planning, bibliothèque, synchro compte).
+
+            ### Nouveautés ${{ github.ref_name }}
+            * 🔔 **Notifications temps réel** des nouveaux épisodes et chapitres
+              (œuvres suivies ou toutes les sorties), centre de notifications avec
+              badge, bannière in-app et notifications système.
+            * 📺 **Correctifs du lecteur vidéo** : contenu mixte autorisé (vidéos
+              HTTP dans les embeds HTTPS), cookies tiers, User-Agent à jour,
+              référent dynamique, détection des lecteurs morts avec passage au
+              lecteur suivant.
 
             ### Installation Android
             1. Téléchargez **AnimeWorld-arm64-v8a.apk** (téléphones récents).
