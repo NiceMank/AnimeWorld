@@ -41,27 +41,29 @@ jobs:
 
       - name: Analyze
         run: |
-          set -o pipefail
-          flutter analyze --no-fatal-infos 2>&1 | tee analyze.log
+          flutter analyze --no-fatal-infos > analyze.log 2>&1 || CODE=$?
+          cat analyze.log
           {
             echo "### flutter analyze"
             echo '```'
             cat analyze.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          exit $((CODE ?? 0))
 
       # Tests unitaires hors ligne (fixtures embarquées) : parseurs, logique
       # de diff des notifications, modèles. Toujours bloquants.
       - name: Tests unitaires
         run: |
-          set -o pipefail
-          flutter test --reporter expanded 2>&1 | tee test.log
+          flutter test --reporter expanded > test.log 2>&1 || CODE=$?
+          tail -80 test.log
           {
             echo "### flutter test"
             echo '```'
             tail -60 test.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          exit $((CODE ?? 0))
 
       # Tests d'intégration contre le site réel : détectent les changements
       # de structure du site qui casseraient l'application (non bloquants :
