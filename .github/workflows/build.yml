@@ -20,10 +20,10 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -41,11 +41,16 @@ jobs:
       - name: Dependencies
         run: flutter pub get
 
+      - name: Patch AGP 9 ProGuard in plugins
+        run: bash tool/patch_agp9_plugins.sh
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
       - name: Build APKs (release, split per ABI + universal)
         run: |
+          # flutter build relance pub get : re-patcher au cas où le cache serait restauré
+          bash tool/patch_agp9_plugins.sh
           flutter build apk --release --split-per-abi
           flutter build apk --release
           mkdir -p dist
@@ -69,6 +74,7 @@ jobs:
           name: AnimeWorld ${{ github.ref_name }}
           files: dist/*
           generate_release_notes: true
+          make_latest: true
           body: |
             ## AnimeWorld ${{ github.ref_name }}
 
