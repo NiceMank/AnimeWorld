@@ -71,13 +71,17 @@ jobs:
       # le site peut être temporairement indisponible).
       - name: Tests parseurs (site réel)
         continue-on-error: true
-        run: dart tool/parsers_live_check.dart
+        run: |
+          dart tool/parsers_live_check.dart 2>&1 | tee live.log || true
+          grep -E "✗|✓|▶" live.log | cut -c1-380 | head -12 | sed 's/^/::notice::/' || true
 
       # Diagnostic du lecteur vidéo : page épisode → episodes.js → lecteurs
       # extraits → accessibilité des hébergeurs. Toujours affiché en résumé.
       - name: Diagnostic lecteur vidéo (site réel)
         continue-on-error: true
-        run: dart run tool/diagnose_player.dart
+        run: |
+          dart run tool/diagnose_player.dart 2>&1 | tee diag.log || true
+          grep -E "▶|page  :|parse :|Lecteur|✗|HTTP" diag.log | cut -c1-380 | head -12 | sed 's/^/::notice::/' || true
 
   android:
     name: Android APK
